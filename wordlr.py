@@ -6,12 +6,15 @@ wordlist = ["cigar","rebut","sissy","humph","awake","blush","focal","evade","nav
 
 from collections import defaultdict
 
+# 
 greenCache = defaultdict(list)
 
 Y = 1
 G = 2 
 B = 0
 
+# given a row and a word, return only the green letters, with ?'s for the
+# rest of the letters
 def greenKey(row,answer):
 	k = ""
 	for i, color in enumerate(row):
@@ -21,12 +24,14 @@ def greenKey(row,answer):
 			k += "?"
 	return k
 
-print(greenKey([2,2,0,0,2], "TESTS"))
+# print(greenKey([2,2,0,0,2], "TESTS"))
 
+# Make a list of all combinations of greens
+# This is just enumerating binary numbers for 5 bits (green/black)
 greenRows = []
 for i in range(32):
 	greenRows.append([G if ((1 << bit) & i) != 0 else B for bit in range(5)])
-print(greenRows)
+# print(greenRows)
 
 for word in wordlist:
 	for row in greenRows:
@@ -89,7 +94,7 @@ def trimDictionaryRows(rows, dictionary):
 	return subDictionary
 
 
-# Convert a wordle gram to a list of rows
+# Convert a pasted wordle gram to a list of rows
 def parseGram(gram):
 	g = re.sub("[a-z ]","",gram)
 	rows = []
@@ -107,82 +112,82 @@ def parseGram(gram):
 		rows.append(row)
 	return rows
 
-rows = parseGram("""⬛Yellow squareGreen square⬛⬛
-Green square⬛Green squareGreen squareGreen square
-Green squareGreen squareGreen squareGreen squareGreen square
-⬜⬜Yellow square⬜Yellow square
-Green squareYellow square⬜⬜⬜
-Green square⬜⬜Green square⬜
-Green square⬜Green squareGreen squareGreen square
-Green squareGreen squareGreen squareGreen squareGreen square
-⬛Yellow square⬛Green square⬛
-⬛⬛Green squareGreen square⬛
-⬛⬛Green squareGreen square⬛
-⬛⬛Green squareGreen squareGreen square
-Green square⬛Green squareGreen squareGreen square
-⬜Yellow square⬜⬜Yellow square
-Yellow square⬜⬜Green squareGreen square
-Green squareGreen squareGreen squareGreen squareGreen square
-⬛Yellow square⬛⬛⬛
-⬛⬛⬛Green square⬛
-⬛⬛⬛Yellow square⬛
-Green squareYellow square⬛⬛⬛
-Green squareYellow squareGreen square⬛Yellow square
-Green square⬜Green squareGreen square⬜
-Green square⬜Green squareGreen squareGreen square
-Green square⬛⬛⬛⬛
-Green square⬛Green square⬛⬛
-Green squareGreen squareGreen square⬛⬛
-⬛⬛⬛⬛⬛
-⬛⬛Green square⬛Yellow square
-⬛Yellow squareGreen square⬛⬛
-Green square⬛Green squareGreen square⬛
-Green square⬛Green squareGreen squareGreen square
-⬛Yellow square⬛⬛⬛
-Green squareYellow squareYellow squareGreen square⬛
-Green square⬛Green squareGreen squareGreen square
-⬛Yellow square⬛⬛⬛
-⬛⬛Yellow squareGreen square⬛
-⬛Yellow squareYellow square⬛Yellow square
-Green square⬛Green squareGreen squareGreen square
-⬜⬜⬜⬜⬜
-⬜Yellow square⬜⬜⬜
-Yellow square⬜⬜⬜⬜
-⬜⬜⬜Yellow square⬜
-Green square⬜Green square⬜⬜
-Green squareYellow square⬛⬛⬛
-Green squareYellow square⬛⬛Green square
-Green square⬛Green squareGreen squareGreen square
-⬛⬛Green square⬛⬛
-⬛⬛Green squareGreen squareGreen square
-⬛⬛Green squareGreen squareGreen square
-Green square⬛Green squareGreen squareGreen square
-Yellow square⬛⬛⬛⬛
-⬛⬛⬛⬛⬛
-Green square⬛⬛Green square⬛
-⬛⬛⬛Yellow square⬛
-⬛Yellow squareYellow square⬛Yellow square
-Green squareYellow squareGreen square⬛Yellow square
-⬛⬛⬛Yellow square⬛
-⬛⬛Green square⬛⬛
-Green squareYellow squareGreen square⬛⬛
-⬜⬜⬜Yellow square⬜
-Green square⬜Green square⬜Yellow square
-⬜⬜⬜Yellow square⬜
-Green square⬜Green square⬜Yellow square
-⬛⬛Yellow squareGreen square⬛
-⬛Yellow squareYellow square⬛Yellow square
-⬛⬛⬛⬛Yellow square
-Green square⬛⬛⬛Yellow square
-Green squareGreen square⬛⬛⬛
-Green squareGreen squareGreen square⬛⬛
-⬜Yellow square⬜⬜Yellow square
-Yellow square⬜⬜Green squareGreen square""")
+# rows = parseGram("""⬛Yellow squareGreen square⬛⬛
+# Green square⬛Green squareGreen squareGreen square
+# Green squareGreen squareGreen squareGreen squareGreen square
+# ⬜⬜Yellow square⬜Yellow square
+# Green squareYellow square⬜⬜⬜
+# Green square⬜⬜Green square⬜
+# Green square⬜Green squareGreen squareGreen square
+# Green squareGreen squareGreen squareGreen squareGreen square
+# ⬛Yellow square⬛Green square⬛
+# ⬛⬛Green squareGreen square⬛
+# ⬛⬛Green squareGreen square⬛
+# ⬛⬛Green squareGreen squareGreen square
+# Green square⬛Green squareGreen squareGreen square
+# ⬜Yellow square⬜⬜Yellow square
+# Yellow square⬜⬜Green squareGreen square
+# Green squareGreen squareGreen squareGreen squareGreen square
+# ⬛Yellow square⬛⬛⬛
+# ⬛⬛⬛Green square⬛
+# ⬛⬛⬛Yellow square⬛
+# Green squareYellow square⬛⬛⬛
+# Green squareYellow squareGreen square⬛Yellow square
+# Green square⬜Green squareGreen square⬜
+# Green square⬜Green squareGreen squareGreen square
+# Green square⬛⬛⬛⬛
+# Green square⬛Green square⬛⬛
+# Green squareGreen squareGreen square⬛⬛
+# ⬛⬛⬛⬛⬛
+# ⬛⬛Green square⬛Yellow square
+# ⬛Yellow squareGreen square⬛⬛
+# Green square⬛Green squareGreen square⬛
+# Green square⬛Green squareGreen squareGreen square
+# ⬛Yellow square⬛⬛⬛
+# Green squareYellow squareYellow squareGreen square⬛
+# Green square⬛Green squareGreen squareGreen square
+# ⬛Yellow square⬛⬛⬛
+# ⬛⬛Yellow squareGreen square⬛
+# ⬛Yellow squareYellow square⬛Yellow square
+# Green square⬛Green squareGreen squareGreen square
+# ⬜⬜⬜⬜⬜
+# ⬜Yellow square⬜⬜⬜
+# Yellow square⬜⬜⬜⬜
+# ⬜⬜⬜Yellow square⬜
+# Green square⬜Green square⬜⬜
+# Green squareYellow square⬛⬛⬛
+# Green squareYellow square⬛⬛Green square
+# Green square⬛Green squareGreen squareGreen square
+# ⬛⬛Green square⬛⬛
+# ⬛⬛Green squareGreen squareGreen square
+# ⬛⬛Green squareGreen squareGreen square
+# Green square⬛Green squareGreen squareGreen square
+# Yellow square⬛⬛⬛⬛
+# ⬛⬛⬛⬛⬛
+# Green square⬛⬛Green square⬛
+# ⬛⬛⬛Yellow square⬛
+# ⬛Yellow squareYellow square⬛Yellow square
+# Green squareYellow squareGreen square⬛Yellow square
+# ⬛⬛⬛Yellow square⬛
+# ⬛⬛Green square⬛⬛
+# Green squareYellow squareGreen square⬛⬛
+# ⬜⬜⬜Yellow square⬜
+# Green square⬜Green square⬜Yellow square
+# ⬜⬜⬜Yellow square⬜
+# Green square⬜Green square⬜Yellow square
+# ⬛⬛Yellow squareGreen square⬛
+# ⬛Yellow squareYellow square⬛Yellow square
+# ⬛⬛⬛⬛Yellow square
+# Green square⬛⬛⬛Yellow square
+# Green squareGreen square⬛⬛⬛
+# Green squareGreen squareGreen square⬛⬛
+# ⬜Yellow square⬜⬜Yellow square
+# Yellow square⬜⬜Green squareGreen square""")
 
 
 
-rows = [[2,0,2,2,2],[2,1,1,1,0],[2,2,2,0,0],[2,0,0,2,0],[0,0,0,0,1],[1,1,0,0,0],[2,0,2,0,1],[2,0,0,1,2],[2,0,0,0,1],[0,0,2,2,1],[0,0,0,1,0],[0,0,2,0,1],[0,1,2,1,0],[0,0,2,2,0],[2,1,2,0,1],[2,1,2,0,1],[1,1,0,0,0]] + rows
-dictionary = wordlist.copy()
+# rows = [[G,B,G,G,G],[G,Y,Y,Y,B],[G,G,G,B,B],[G,B,B,G,B],[B,B,B,B,Y],[Y,Y,B,B,B],[G,B,G,B,Y],[G,B,B,Y,G],[G,B,B,B,Y],[B,B,G,G,Y],[B,B,B,Y,B],[B,B,G,B,Y],[B,Y,G,Y,B],[B,B,G,G,B],[G,Y,G,B,Y],[G,Y,G,B,Y],[Y,Y,B,B,B]] + rows
+# dictionary = wordlist.copy()
 
 # # Check if the set of all possible rows for the given answer will narrow down the dictionary to that answer
 # # Generate all possible rows
@@ -226,7 +231,7 @@ def scrapeTwitter():
 	count = 5
 	try:
 		# Creation of query method using parameters
-		tweets = client.search_recent_tweets(query=text_query, max_results=10)
+		tweets = client.search_recent_tweets(query=text_query, max_results=100)
 		# tweet_fields=['context_annotations', 'created_at']
 
 		return tweets 
@@ -238,7 +243,51 @@ def scrapeTwitter():
 # Takes a JSON object containing Wordle tweets
 # Sanitizes, parses, and returns a list of rows
 def parseTweets(tweets):
+	rows = []
+	for i, tweet in enumerate(tweets.data):
+		try:
+			tweetLines = tweet.text.split('\n')
+			# Skip any introductory added text and find start of wordle grid
+			for line in tweetLines:
+				match = re.match("Wordle ([0-9]{3}) ([1-6])/6", line)
+				wordleNumber = int(match.group(1)) if match else None
+				score = int(match.group(2)) if match else None
+				tweetLines.remove(line)
+				if match:
+					break
+					
+			if tweetLines[0] == '':
+				del tweetLines[0]
+			else:
+				raise Exception('Unexpected post format - no blank line between header and rows')
+			# Parse rows of squares
+			for line in tweetLines[:score]:
+				row = []
+				if len(line) != 5:
+					raise Exception('Unexpected post format - row length')
+				for box in list(line):
+					if box == '\N{Black Large Square}' or box == '\N{White Large Square}':
+						row.append(B)
+					elif box == '\N{Large Yellow Square}' or box == '\N{Large Blue square}':
+						row.append(Y)
+					elif box == '\N{Large Green Square}' or box == '\N{Large Orange square}':
+						row.append(G)
+					else:
+						raise Exception('Unexpected post format - row contains unexpected character')
+				rows.append(row)
+		except BaseException as err:
+			print(f"Unexpected {err=}, {type(err)=}, parsing tweet {i}:")
+			print(tweet)
+			print("parsed down to lines: ")
+			print(tweetLines)
+			continue
+	return rows
 
+tweets = scrapeTwitter()
+rows = parseTweets(tweets)
+dictionary = wordlist.copy()
+d = trimDictionaryRows(rows, dictionary)
+print(d)
 
 # TODO :
 # Add start_time of midnight today
