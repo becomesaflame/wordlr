@@ -1,6 +1,7 @@
 import datetime
 import os
 import re
+import time
 import tweepy
 
 # To run from interactive session:
@@ -193,6 +194,31 @@ def tallyRowStrikes(row, tallyDictionary, dictionary):
 		if not validAnswer(row, word, dictionary):
 			tallyDictionary[word] += 1
 
+def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
+	for word in rowLookup[''.join(str(i) for i in row)]: # Convert row to str
+		tallyDictionary[word] += 1
+
+# Tally Strikes
+# For a list of parsed tweets, check each row against every
+# word in the dictionary. Tally a strike against each word
+# that could not be an answer that generated that row
+def tallyStrikes(renderedTweets, dictionary, rowLookup):
+	tallyDictionary = dict.fromkeys(dictionary, 0)
+	topWords = []
+	for tweet in renderedTweets:
+		for row in tweet:
+			if row == [G,G,G,G,G]:
+				continue
+			tallyRowStrikesFast(row, tallyDictionary, rowLookup)
+			# tallyRowStrikes(row, tallyDictionary, dictionary, rowLookup) # Use old dict looping method
+			# tallyRowStrikes = sorted(tallyRowStrikes, key=tallyRowStrikes.get) # sort by strikes
+			topWords = sortDict(tallyDictionary, topWords)
+			print(topWords[0], ":", tallyDictionary[topWords[0]], " old:", topWords[1],":",tallyDictionary[topWords[1]], " Remaining:", len(tallyDictionary))
+			if tallyDictionary[topWords[0]] < tallyDictionary[topWords[1]] - 10:
+				print(f"{topWords[0]} wins with {tallyDictionary[topWords[0]]}")
+				print(f"{topWords[1]} in second with {tallyDictionary[topWords[1]]}")
+	return tallyDictionary
+
 # Convert a pasted wordle gram to a list of rows
 def parseGram(gram):
 	g = re.sub("[a-z ]","",gram)
@@ -329,17 +355,6 @@ def checkAnswer(answer, tweets, dictionary, wordleNumberToday):
 				print(renderedTweet)
 
 
-tweets = scrapeTwitter()
-dictionary = wordlist.copy()
-subDictionary = dictionary.copy()
-renderedTweets = parseTweets(tweets, wordleNumberToday)
-# subDictionary = trimDictionaryRenderedTweets(renderedTweets, subDictionary, dictionary)
-# while len(subDictionary) != 1:
-# 	renderedTweets = parseTweets(tweets, wordleNumberToday)
-# 	subDictionary = trimDictionaryRenderedTweets(renderedTweets, subDictionary, dictionary)
-# 	print(subDictionary)
-# 	sleep(30)
-
 def sortDict(inDict, topWords):
 	for word in list(inDict.keys()):
 		if len(topWords) != 2:
@@ -347,22 +362,69 @@ def sortDict(inDict, topWords):
 		if inDict[word] < inDict[topWords[0]]:
 			topWords[1] = topWords[0]
 			topWords[0] = word
-		elif inDict[word] > inDict[topWords[0]]+50:
-			del inDict[word]
+		# elif inDict[word] > inDict[topWords[0]]+50:
+		# 	del inDict[word]
 	return topWords
 
+# Generate row lookup table
+# For every possible row, generate a list of every possble answer that could result in that row
+def generateRowLookup(dictionary):
+	rowLookup = defaultdict(list)
+
+	f = open("rowLookupTable.py", 'w')
+
+	rows = ['00000']
+	row = [0,0,0,0,0]
+	while row != [2,2,2,2,2]:
+		if row[0] != 2:
+			row[0] += 1
+		else:
+			row[0] = 0
+			if row[1] != 2:
+				row[1] += 1
+			else:
+				row[1] = 0
+				if row[2] != 2:
+					row[2] += 1
+				else:
+					row[2] = 0
+					if row[3] != 2:
+						row[3] += 1
+					else:
+						row[3] = 0
+						if row[4] != 2:
+							row[4] += 1
+						else:
+							row[4] = 0
+		rows.append(''.join(str(i) for i in row)) # Convert list of ints to str
+	for strRow in rows:
+		for answer in dictionary:
+			listRow = [int(x) for x in list(strRow)] # Convert to list of ints
+			if validAnswer(listRow, answer, dictionary):
+				rowLookup[strRow].append(answer)
+		print(strRow)
+	f.write("rowLookup = " + repr(rowLookup) + '\n')
+	f.close()
+	return rowLookup
+
+# if __name__ == '__main__':
+# Loads the rowLookup dict
+# import rowLookupTable.py
+exec(open("rowLookupTable.py").read())
+
+# Scrape and parse tweets
+tweets = scrapeTwitter()
+renderedTweets = parseTweets(tweets, wordleNumberToday)
+
+# Run with vote method
 dictionary = wordlist.copy()
-tallyDictionary = dict.fromkeys(dictionary, 0)
-topWords = []
-for tweet in renderedTweets:
-	for row in tweet:
-		if row == [G,G,G,G,G]:
-			continue
-		tallyRowStrikes(row, tallyDictionary, dictionary)
-		# tallyRowStrikes = sorted(tallyRowStrikes, key=tallyRowStrikes.get) # sort by strikes
-		topWords = sortDict(tallyDictionary, topWords)
-		print(topWords[0], ":", tallyDictionary[topWords[0]], " old:", topWords[1],":",tallyDictionary[topWords[1]], " Remaining:", len(tallyDictionary))
-		if tallyDictionary[topWords[0]] < tallyDictionary[topWords[1]] - 10:
-			print(f"{topWords[0]} wins with {tallyDictionary[topWords[0]]}")
-			print(f"{topWords[1]} in second with {tallyDictionary[topWords[1]]}")
-			# return topWords[0]
+tallyStrikes(renderedTweets, dictionary, rowLookup)
+
+# # Run with trimming method
+# subDictionary = dictionary.copy()
+# subDictionary = trimDictionaryRenderedTweets(renderedTweets, subDictionary, dictionary)
+# while len(subDictionary) != 1:
+# 	renderedTweets = parseTweets(tweets, wordleNumberToday)
+# 	subDictionary = trimDictionaryRenderedTweets(renderedTweets, subDictionary, dictionary)
+# 	print(subDictionary)
+# 	sleep(30)
