@@ -280,8 +280,9 @@ def tallyRowStrikes(row, tallyDictionary, dictionary):
 ##################################################################################
 
 def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
-	for word in rowLookup[''.join(str(i) for i in row)]: # Convert row to str
-		tallyDictionary[word] += 1
+	for word in tallyDictionary.keys():
+		if not word in rowLookup[''.join(str(i) for i in row)]: # Convert row to str
+			tallyDictionary[word] += 1
 
 # Tally Strikes
 # For a list of parsed tweets, check each row against every
