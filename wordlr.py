@@ -248,17 +248,6 @@ def trimDictionaryRenderedTweets(renderedTweets, subDictionary, dictionary):
 		# 	return subDictionary
 	return subDictionary
 
-def sortDict(inDict, topWords):
-	for word in list(inDict.keys()):
-		if len(topWords) != 2:
-			topWords.append(word)
-		if inDict[word] < inDict[topWords[0]]:
-			topWords[1] = topWords[0]
-			topWords[0] = word
-		# elif inDict[word] > inDict[topWords[0]]+50:
-		# 	del inDict[word]
-	return topWords
-
 # Takes a row, and increments the count for each 
 # word of a tally dictionary that doesn't fit the row
 # tallyDictionary input should be a dict
@@ -278,6 +267,17 @@ def tallyRowStrikes(row, tallyDictionary, dictionary):
 ##################################################################################
 ##################################################################################
 ##################################################################################
+
+def sortDict(inDict, topWords):
+	for word in list(inDict.keys()):
+		if len(topWords) != 2:
+			topWords.append(word)
+		if inDict[word] < inDict[topWords[0]]:
+			topWords[1] = topWords[0]
+			topWords[0] = word
+		# elif inDict[word] > inDict[topWords[0]]+50:
+		# 	del inDict[word]
+	return topWords
 
 def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
 	for word in tallyDictionary.keys():
