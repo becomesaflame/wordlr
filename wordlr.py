@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 import re
 import time
@@ -85,6 +86,38 @@ import tweepy
 # rows = [[G,B,G,G,G],[G,Y,Y,Y,B],[G,G,G,B,B],[G,B,B,G,B],[B,B,B,B,Y],[Y,Y,B,B,B],[G,B,G,B,Y],[G,B,B,Y,G],[G,B,B,B,Y],[B,B,G,G,Y],[B,B,B,Y,B],[B,B,G,B,Y],[B,Y,G,Y,B],[B,B,G,G,B],[G,Y,G,B,Y],[G,Y,G,B,Y],[Y,Y,B,B,B]] + rows
 from collections import defaultdict
 
+# Generate all possible rows
+def genAllRows():
+	allRows = []
+	allCells = [G,Y,B]
+	for t0 in allCells:
+		for t1 in allCells:
+			for t2 in allCells:
+				for t3 in allCells:
+					for t4 in allCells:
+						allRows.append([t0,t1,t2,t3,t4])
+	return allRows
+
+
+
+# Convert a pasted wordle gram to a list of rows
+def parseGram(gram):
+	g = re.sub("[a-z ]","",gram)
+	rows = []
+	for gramRow in g.split('\n'):
+		row = []
+		for block in gramRow:
+			if block == "Y":
+				row.append(1)
+			elif block == "G":
+				row.append(2)
+			elif block == "⬛" or block == "⬜":
+				row.append(0)
+			else:
+				raise Exception("Ohno: " + block )
+		rows.append(row)
+	return rows
+
 with open('wordList.txt') as f:
     wordlist = [ line.strip() for line in f ]
 # 
@@ -142,7 +175,8 @@ def scoreGuess(answer, guess):
 			lettersLeft.remove(guess[letterIndex])
 	return row
 
-# For a given row, check if the answer is valid
+# For a given row, check if the given answer could 
+# have produced that row for any guess
 def validAnswer(row, answer, dictionary):
 	for word in greenCache[greenKey(row,answer)]:
 		if row == scoreGuess(answer, word): 
@@ -150,6 +184,36 @@ def validAnswer(row, answer, dictionary):
 			return True
 	# answer has no valid guesses. Trim answer from subDictionary
 	return False
+
+def checkAnswer(answer, tweets, rowLookup, wordleNumberToday):
+	renderedTweets = parseTweets(tweets, wordleNumberToday)
+	for i, renderedTweet in enumerate(renderedTweets):
+		for j, row in enumerate(renderedTweet):
+			if not answer in rowLookup[''.join(str(i) for i in row)]:
+			# if validAnswer(row, answer, dictionary) == False:
+				print(f"Row {j} in Tweet {i} is invalid. Tweet: ")
+				print(tweets[i].split('\n'))
+				print("Rendered tweet: ")
+				print(renderedTweet)
+
+# Generate row lookup table
+# For every possible row, generate a list of every possble answer that could result in that row
+def generateRowLookup(dictionary):
+	rowLookup = defaultdict(list)
+
+	f = open("rowLookupTable.py", 'w')
+	allRows = genAllRows()
+	for row in allRows:
+		strRow = ''.join(str(i) for i in row) # Convert list of ints to str
+		rowLookup[strRow] = []
+		for answer in dictionary:
+			if validAnswer(row, answer, dictionary):
+				rowLookup[strRow].append(answer)
+		print(strRow)
+	f.write("rowLookup = defaultdict(list)")
+	f.write("rowLookup.update(" + json.dumps(rowLookup) + ')\n')
+	f.close()
+	return rowLookup
 
 # Take a row and trim down the dictionary
 # Go through dictionary
@@ -184,6 +248,17 @@ def trimDictionaryRenderedTweets(renderedTweets, subDictionary, dictionary):
 		# 	return subDictionary
 	return subDictionary
 
+def sortDict(inDict, topWords):
+	for word in list(inDict.keys()):
+		if len(topWords) != 2:
+			topWords.append(word)
+		if inDict[word] < inDict[topWords[0]]:
+			topWords[1] = topWords[0]
+			topWords[0] = word
+		# elif inDict[word] > inDict[topWords[0]]+50:
+		# 	del inDict[word]
+	return topWords
+
 # Takes a row, and increments the count for each 
 # word of a tally dictionary that doesn't fit the row
 # tallyDictionary input should be a dict
@@ -193,6 +268,16 @@ def tallyRowStrikes(row, tallyDictionary, dictionary):
 	for word in list(tallyDictionary.keys()):
 		if not validAnswer(row, word, dictionary):
 			tallyDictionary[word] += 1
+
+
+
+
+
+
+
+##################################################################################
+##################################################################################
+##################################################################################
 
 def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
 	for word in rowLookup[''.join(str(i) for i in row)]: # Convert row to str
@@ -217,50 +302,7 @@ def tallyStrikes(renderedTweets, dictionary, rowLookup):
 			if tallyDictionary[topWords[0]] < tallyDictionary[topWords[1]] - 10:
 				print(f"{topWords[0]} wins with {tallyDictionary[topWords[0]]}")
 				print(f"{topWords[1]} in second with {tallyDictionary[topWords[1]]}")
-	return tallyDictionary
-
-# Convert a pasted wordle gram to a list of rows
-def parseGram(gram):
-	g = re.sub("[a-z ]","",gram)
-	rows = []
-	for gramRow in g.split('\n'):
-		row = []
-		for block in gramRow:
-			if block == "Y":
-				row.append(1)
-			elif block == "G":
-				row.append(2)
-			elif block == "⬛" or block == "⬜":
-				row.append(0)
-			else:
-				raise Exception("Ohno: " + block )
-		rows.append(row)
-	return rows
-
-# dictionary = wordlist.copy()
-
-
-# TODO move this to a test
-# # Check if the set of all possible rows for the given answer will narrow down the dictionary to that answer
-# # Generate all possible rows
-# allRows = []
-# allCells = [G,Y,B]
-# for t0 in allCells:
-# 	for t1 in allCells:
-# 		for t2 in allCells:
-# 			for t3 in allCells:
-# 				for t4 in allCells:
-# 					allRows.append([t0,t1,t2,t3,t4])
-
-# validRows = []
-# for row in allRows:
-# 	if validAnswer(row, "skill", dictionary):
-# 		validRows.append(row)
-
-# d = trimDictionaryRows(validRows, dictionary)
-# print(d)		
-
-
+	return topWords, tallyDictionary
 
 # ref:
 # https://dev.to/twitterdev/a-comprehensive-guide-for-using-the-twitter-api-v2-using-tweepy-in-python-15d9
@@ -268,15 +310,7 @@ def parseGram(gram):
 # API: 
 # https://docs.tweepy.org/en/stable/client.html
 def scrapeTwitter():
-	# consumer_key = os.environ.get("TWITTER_API_KEY")
-	# consumer_secret = os.environ.get("TWITTER_API_KEY_SECRET")
 	bearer_token = os.environ.get("TWITTER_BEARER_TOKEN")
-	# access_token = os.environ.get("TWITTER_ACCESS_TOKEN")
-	# access_token_secret = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET")
-
-	# auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
-	# auth.set_access_token(access_token, access_token_secret)
-	# api = tweepy.API(auth,wait_on_rate_limit=True)
 	client = tweepy.Client(bearer_token=bearer_token)
 
 	text_query = 'Wordle 6'
@@ -300,8 +334,8 @@ def scrapeTwitter():
 def parseTweets(tweets, wordleNumberToday):
 	renderedTweets = []
 	for i, tweet in enumerate(tweets):
+		rows = [] # rendered rows in this tweet
 		try:
-			rows = [] # rendered rows in this tweet
 			tweetLines = tweet.split('\n')
 			# Skip any introductory added text and find start of wordle grid
 			for line in tweetLines:
@@ -335,90 +369,30 @@ def parseTweets(tweets, wordleNumberToday):
 					else:
 						raise Exception('Unexpected post format - row contains unexpected character')
 				rows.append(row)
-			renderedTweets.append(rows)
 		except BaseException as err:
 			print(f"Unexpected {err=}, {type(err)=}, parsing tweet {i}:")
 			print(tweet)
 			print("stripped down to lines: ")
 			print(tweetLines)
-			continue
+		renderedTweets.append(rows)
 	return renderedTweets
 
-def checkAnswer(answer, tweets, dictionary, wordleNumberToday):
-	renderedTweets = parseTweets(tweets, wordleNumberToday)
-	for i, renderedTweet in enumerate(renderedTweets):
-		for j, row in enumerate(renderedTweet):
-			if validAnswer(row, answer, dictionary) == False:
-				print(f"Row {j} in Tweet {i} is invalid. Tweet: ")
-				print(tweets[i].split('\n'))
-				print("Rendered tweet: ")
-				print(renderedTweet)
 
-
-def sortDict(inDict, topWords):
-	for word in list(inDict.keys()):
-		if len(topWords) != 2:
-			topWords.append(word)
-		if inDict[word] < inDict[topWords[0]]:
-			topWords[1] = topWords[0]
-			topWords[0] = word
-		# elif inDict[word] > inDict[topWords[0]]+50:
-		# 	del inDict[word]
-	return topWords
-
-# Generate row lookup table
-# For every possible row, generate a list of every possble answer that could result in that row
-def generateRowLookup(dictionary):
-	rowLookup = defaultdict(list)
-
-	f = open("rowLookupTable.py", 'w')
-
-	rows = ['00000']
-	row = [0,0,0,0,0]
-	while row != [2,2,2,2,2]:
-		if row[0] != 2:
-			row[0] += 1
-		else:
-			row[0] = 0
-			if row[1] != 2:
-				row[1] += 1
-			else:
-				row[1] = 0
-				if row[2] != 2:
-					row[2] += 1
-				else:
-					row[2] = 0
-					if row[3] != 2:
-						row[3] += 1
-					else:
-						row[3] = 0
-						if row[4] != 2:
-							row[4] += 1
-						else:
-							row[4] = 0
-		rows.append(''.join(str(i) for i in row)) # Convert list of ints to str
-	for strRow in rows:
-		for answer in dictionary:
-			listRow = [int(x) for x in list(strRow)] # Convert to list of ints
-			if validAnswer(listRow, answer, dictionary):
-				rowLookup[strRow].append(answer)
-		print(strRow)
-	f.write("rowLookup = " + repr(rowLookup) + '\n')
-	f.close()
-	return rowLookup
-
-# if __name__ == '__main__':
 # Loads the rowLookup dict
 # import rowLookupTable.py
 exec(open("rowLookupTable.py").read())
 
-# Scrape and parse tweets
-tweets = scrapeTwitter()
-renderedTweets = parseTweets(tweets, wordleNumberToday)
-
-# Run with vote method
 dictionary = wordlist.copy()
-tallyStrikes(renderedTweets, dictionary, rowLookup)
+
+
+if __name__ == '__main__':
+	# Scrape and parse tweets
+	tweets = scrapeTwitter()
+	renderedTweets = parseTweets(tweets, wordleNumberToday)
+
+	# Run with vote method
+	answer, tallyDictionary = tallyStrikes(renderedTweets, dictionary, rowLookup)
+	print(answer)
 
 # # Run with trimming method
 # subDictionary = dictionary.copy()
@@ -428,3 +402,5 @@ tallyStrikes(renderedTweets, dictionary, rowLookup)
 # 	subDictionary = trimDictionaryRenderedTweets(renderedTweets, subDictionary, dictionary)
 # 	print(subDictionary)
 # 	sleep(30)
+
+
