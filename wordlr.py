@@ -272,11 +272,13 @@ def sortDict(inDict, topWords):
 	for word in list(inDict.keys()):
 		if len(topWords) != 2:
 			topWords.append(word)
-		if inDict[word] < inDict[topWords[0]]:
+		elif inDict[word] < inDict[topWords[0]]:
 			topWords[1] = topWords[0]
 			topWords[0] = word
-		# elif inDict[word] > inDict[topWords[0]]+50:
-		# 	del inDict[word]
+		elif inDict[word] < inDict[topWords[1]]:
+			topWords[1] = word
+		elif inDict[word] > inDict[topWords[0]]+25:
+			del inDict[word]
 	return topWords
 
 def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
