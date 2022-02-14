@@ -321,7 +321,7 @@ def scrapeTwitter():
 		# tweets = client.search_recent_tweets(query=text_query, max_results=100)
 
 		tweets = []
-		for tweet in tweepy.Paginator(client.search_recent_tweets, query=text_query, max_results=100).flatten(limit=5000):
+		for tweet in tweepy.Paginator(client.search_recent_tweets, query=text_query, max_results=100).flatten(limit=10000):
 			tweets.append(tweet.data['text'])
 
 		return tweets 
