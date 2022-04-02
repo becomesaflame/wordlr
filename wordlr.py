@@ -290,8 +290,7 @@ def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
 # For a list of parsed tweets, check each row against every
 # word in the dictionary. Tally a strike against each word
 # that could not be an answer that generated that row
-def tallyStrikes(renderedTweets, dictionary, rowLookup):
-	tallyDictionary = dict.fromkeys(dictionary, 0)
+def tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup):
 	topWords = []
 	for tweet in renderedTweets:
 		for row in tweet:
@@ -312,23 +311,21 @@ def tallyStrikes(renderedTweets, dictionary, rowLookup):
 #
 # API: 
 # https://docs.tweepy.org/en/stable/client.html
-def scrapeTwitter():
+def initTweepyClient():
 	bearer_token = os.environ.get("TWITTER_BEARER_TOKEN")
 	client = tweepy.Client(bearer_token=bearer_token)
+	return client
 
+def scrapeTwitter(client):
 	text_query = 'Wordle 6'
 	try:
-		# tweets = client.search_recent_tweets(query=text_query, max_results=100)
-
 		tweets = []
-		for tweet in tweepy.Paginator(client.search_recent_tweets, query=text_query, max_results=100).flatten(limit=10000):
+		for tweet in tweepy.Paginator(client.search_recent_tweets, query=text_query, max_results=100).flatten(limit=1000):
 			tweets.append(tweet.data['text'])
-
 		return tweets 
-
 	except BaseException as e:
-	    print('failed on_status,',str(e))
-	    time.sleep(3)
+		print('failed on_status,',str(e))
+		time.sleep(3)
 
 # Takes a list of Wordle tweet text fields
 # Sanitizes, parses, and renders them into rows
@@ -390,12 +387,17 @@ dictionary = wordlist.copy()
 
 if __name__ == '__main__':
 	# Scrape and parse tweets
-	tweets = scrapeTwitter()
-	renderedTweets = parseTweets(tweets, wordleNumberToday)
+	client = initTweepyClient()
 
-	# Run with vote method
-	answer, tallyDictionary = tallyStrikes(renderedTweets, dictionary, rowLookup)
-	print(answer)
+	tallyDictionary = dict.fromkeys(dictionary, 0)
+	topWords = ['','']
+	while topWords[0] > topWords[1] - 100:
+		tweets = scrapeTwitter(client)
+		renderedTweets = parseTweets(tweets, wordleNumberToday)
+
+		# Run with vote method
+		topWords = tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup)
+
 
 # # Run with trimming method
 # subDictionary = dictionary.copy()
