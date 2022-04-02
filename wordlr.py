@@ -260,7 +260,23 @@ def tallyRowStrikes(row, tallyDictionary, dictionary):
 
 
 
-
+# Takes a parsed Tweet (list of rows)
+# Check duplicate rows:
+# for each potential answer, remove the potential answer from the rowLookup as you go through the rows
+# Strike is tallied for the answer if 
+def tallyTweetStrikes(tweet, tallyDictionary, rowLookup):
+	for answer in tallyDictionary.keys(): # Iterate over all potential answers
+		scratchRowLookup = rowLookup.copy() # start with a fresh copy of the rowLookup for each answer
+		for row in tweet:
+			if row == [G,G,G,G,G]:
+				continue
+			rowStr = ''.join(str(i) for i in row) # Convert row to str
+			if not answer in scratchRowLookup[rowStr]:
+				tallyDictionary[answer] += 1
+			else:
+				# delete guess from scratchRowLookup entry for this row
+				# This ensures that duplicate rows must be reachable from multiple guesses for each answer
+				scratchRowLookup[rowStr].remove(answer)
 
 
 
@@ -282,6 +298,8 @@ def sortDict(inDict, topWords):
 	return topWords
 
 def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
+	if row == [G,G,G,G,G]:
+		return # TODO check syntax for exiting with no return value
 	for word in tallyDictionary.keys():
 		if not word in rowLookup[''.join(str(i) for i in row)]: # Convert row to str
 			tallyDictionary[word] += 1
@@ -293,18 +311,17 @@ def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
 def tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup):
 	topWords = []
 	for tweet in renderedTweets:
-		for row in tweet:
-			if row == [G,G,G,G,G]:
-				continue
-			tallyRowStrikesFast(row, tallyDictionary, rowLookup)
-			# tallyRowStrikes(row, tallyDictionary, dictionary, rowLookup) # Use old dict looping method
-			# tallyRowStrikes = sorted(tallyRowStrikes, key=tallyRowStrikes.get) # sort by strikes
-			topWords = sortDict(tallyDictionary, topWords)
-			print(topWords[0], ":", tallyDictionary[topWords[0]], " old:", topWords[1],":",tallyDictionary[topWords[1]], " Remaining:", len(tallyDictionary))
-			if tallyDictionary[topWords[0]] < tallyDictionary[topWords[1]] - 10:
-				print(f"{topWords[0]} wins with {tallyDictionary[topWords[0]]}")
-				print(f"{topWords[1]} in second with {tallyDictionary[topWords[1]]}")
-	return topWords, tallyDictionary
+		# for row in tweet:
+		# 	tallyRowStrikesFast(row, tallyDictionary, rowLookup)
+		# 	# tallyRowStrikes(row, tallyDictionary, dictionary, rowLookup) # Use old dict looping method
+		# 	# tallyRowStrikes = sorted(tallyRowStrikes, key=tallyRowStrikes.get) # sort by strikes
+		tallyTweetStrikes(tweet, tallyDictionary, rowLookup) # try new method with checks for duplicates
+		topWords = sortDict(tallyDictionary, topWords)
+		print(topWords[0], ":", tallyDictionary[topWords[0]], " old:", topWords[1],":",tallyDictionary[topWords[1]], " Remaining:", len(tallyDictionary))
+		if tallyDictionary[topWords[0]] < tallyDictionary[topWords[1]] - 10:
+			print(f"{topWords[0]} wins with {tallyDictionary[topWords[0]]}")
+			print(f"{topWords[1]} in second with {tallyDictionary[topWords[1]]}")
+	return topWords
 
 # ref:
 # https://dev.to/twitterdev/a-comprehensive-guide-for-using-the-twitter-api-v2-using-tweepy-in-python-15d9
