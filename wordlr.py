@@ -9,7 +9,7 @@ import tweepy
 # To run from interactive session:
 # exec(open("wordlr.py").read())
 
-WIN_GAP = 10 # How much of a lead one answer needs to achieve before declaring victory
+WIN_GAP = 20 # How much of a lead one answer needs to achieve before declaring victory
 
 ANSWER_CHECK = '' # Debug: Put correct answer here to flag erroneous strikes
 
@@ -282,7 +282,7 @@ def tallyTweetStrikes(tweet, tallyDictionary, rowLookup):
 				if answer == ANSWER_CHECK:
 					print("False strike on tweet:")
 					print(tweet)
-					# breakpoint()
+					breakpoint()
 			else:
 				# delete guess from scratchRowLookup entry for this row
 				# This ensures that duplicate rows must be reachable from multiple guesses for each answer
@@ -303,7 +303,7 @@ def sortDict(inDict, topWords):
 			topWords[0] = word
 		elif inDict[word] < inDict[topWords[1]] and word != topWords[0]:
 			topWords[1] = word
-		elif inDict[word] > inDict[topWords[0]]+25:
+		elif inDict[word] > inDict[topWords[0]]+WIN_GAP+1:
 			del inDict[word]
 	return topWords
 
@@ -316,23 +316,28 @@ def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
 			if answer == ANSWER_CHECK:
 				print("False strike on row:")
 				print(row)
-				# breakpoint()
+				breakpoint()
 
 # Tally Strikes
 # For a list of parsed tweets, check each row against every
 # word in the dictionary. Tally a strike against each word
 # that could not be an answer that generated that row
-def tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup):
+def tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCount):
 	topWords = []
-	for tweet in renderedTweets:
+	win = False
+	for tweet in renderedTweets: # note that invalid tweets are still here as empty lists
 		for row in tweet:
+			lineCount += 1
 			tallyRowStrikesFast(row, tallyDictionary, rowLookup)
 			# tallyRowStrikes(row, tallyDictionary, dictionary, rowLookup) # Use old dict looping method
 			# tallyRowStrikes = sorted(tallyRowStrikes, key=tallyRowStrikes.get) # sort by strikes
 		# tallyTweetStrikes(tweet, tallyDictionary, rowLookup) # try new method with checks for duplicates
 		topWords = sortDict(tallyDictionary, topWords)
-		print(topWords[0], ":", tallyDictionary[topWords[0]], " old:", topWords[1],":",tallyDictionary[topWords[1]], " Remaining:", len(tallyDictionary))
-	return topWords
+		print(topWords[0], ":", tallyDictionary[topWords[0]], " second place:", topWords[1],":",tallyDictionary[topWords[1]], " Remaining:", len(tallyDictionary), "Processed ", lineCount, " lines")
+		if tallyDictionary[topWords[0]] < tallyDictionary[topWords[1]] - WIN_GAP:
+			win = True
+			break
+	return topWords, win, lineCount
 
 # ref:
 # https://dev.to/twitterdev/a-comprehensive-guide-for-using-the-twitter-api-v2-using-tweepy-in-python-15d9
@@ -413,30 +418,28 @@ exec(open("rowLookupTable.py").read())
 
 dictionary = wordlist.copy()
 
-# Scrape a batch of tweets
-# Parse them
-# Tally strikes with the parsed tweets
-def mainLoop(tallyDictionary):
-	# breakpoint()
-	tweets = scrapeTwitter(client)
-	renderedTweets = parseTweets(tweets, wordleNumberToday)
-
-	# Run with vote method
-	topWords = tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup)
-
-	return topWords
-
 if __name__ == '__main__':
 	# Scrape and parse tweets
 	client = initTweepyClient()
 
 	tallyDictionary = dict.fromkeys(dictionary, 0)
-	topWords = mainLoop(tallyDictionary)	
-	while tallyDictionary[topWords[0]] > tallyDictionary[topWords[1]] - WIN_GAP:
-		topWords = mainLoop(tallyDictionary)
+	lineCount = 0
+	win = False
+
+	while win == False:
+		# breakpoint()
+
+		# Scrape 100 tweets
+		tweets = scrapeTwitter(client)
+		# Parse the tweets into rows
+		renderedTweets = parseTweets(tweets, wordleNumberToday)
+
+		# Run with vote method
+		topWords, win, lineCount = tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCount)
 
 	print(f"{topWords[0]} wins with {tallyDictionary[topWords[0]]}")
 	print(f"{topWords[1]} in second with {tallyDictionary[topWords[1]]}")
+	print(f"Parsed {lineCount} lines")
 
 
 # # Run with trimming method
