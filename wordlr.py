@@ -27,6 +27,19 @@ B = 0
 wordleEpoch = datetime.date(2021, 6, 19)
 wordleNumberToday = (datetime.date.today() - wordleEpoch).days
 
+def sortDict(inDict, topWords):
+	for word in list(inDict.keys()):
+		if len(topWords) != 2:
+			topWords.append(word)
+		elif inDict[word] < inDict[topWords[0]]:
+			topWords[1] = topWords[0]
+			topWords[0] = word
+		elif inDict[word] < inDict[topWords[1]] and word != topWords[0]:
+			topWords[1] = word
+		elif inDict[word] > inDict[topWords[0]]+WIN_GAP+1:
+			del inDict[word]
+	return topWords
+
 # Takes a parsed Tweet (list of rows)
 # Check duplicate rows:
 # for each potential answer, remove the potential answer from the rowLookup as you go through the rows
@@ -51,30 +64,6 @@ def tallyTweetStrikes(tweet, tallyDictionary, rowLookup):
 				# This ensures that duplicate rows must be reachable from multiple guesses for each answer
 				scratchRowLookup[rowStr].remove(answer)
 
-def sortDict(inDict, topWords):
-	for word in list(inDict.keys()):
-		if len(topWords) != 2:
-			topWords.append(word)
-		elif inDict[word] < inDict[topWords[0]]:
-			topWords[1] = topWords[0]
-			topWords[0] = word
-		elif inDict[word] < inDict[topWords[1]] and word != topWords[0]:
-			topWords[1] = word
-		elif inDict[word] > inDict[topWords[0]]+WIN_GAP+1:
-			del inDict[word]
-	return topWords
-
-def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
-	if row == [G,G,G,G,G]:
-		return # TODO check syntax for exiting with no return value
-	for answer in tallyDictionary.keys():
-		if not answer in rowLookup[''.join(str(i) for i in row)]: # Convert row to str
-			tallyDictionary[answer] += 1
-			if answer == ANSWER_CHECK:
-				print("False strike on row:")
-				print(row)
-				breakpoint()
-
 # Tally Strikes
 # For a list of parsed tweets, check each row against every
 # word in the dictionary. Tally a strike against each word
@@ -83,10 +72,8 @@ def tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCou
 	topWords = []
 	win = False
 	for tweet in renderedTweets: # note that invalid tweets are still here as empty lists
-		for row in tweet:
-			lineCount += 1
-			tallyRowStrikesFast(row, tallyDictionary, rowLookup)
-		# tallyTweetStrikes(tweet, tallyDictionary, rowLookup) # try new method with checks for duplicates
+		lineCount += len(tweet)
+		tallyTweetStrikes(tweet, tallyDictionary, rowLookup) # try new method with checks for duplicates
 		topWords = sortDict(tallyDictionary, topWords)
 		print(topWords[0], ":", tallyDictionary[topWords[0]], " second place:", topWords[1],":",tallyDictionary[topWords[1]], " Remaining:", len(tallyDictionary), "Processed ", lineCount, " lines")
 		if tallyDictionary[topWords[0]] < tallyDictionary[topWords[1]] - WIN_GAP:
