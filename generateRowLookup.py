@@ -1,4 +1,14 @@
+from collections import defaultdict
+import datetime
+import json
+import time
 
+startTime = time.perf_counter()
+
+# Shorthand constants for block colors
+Y = 1
+G = 2 
+B = 0
 
 # Generate all possible rows
 def genAllRows():
@@ -32,6 +42,10 @@ def scoreGuess(answer, guess):
 			row[letterIndex] = 1;
 			lettersLeft.remove(guess[letterIndex])
 	return row
+
+# Load the list of all viable Wordle words
+with open('wordList.txt') as f:
+    wordlist = [ line.strip() for line in f ]
 
 # given a row and a word, return only the green letters, with ?'s for the
 # rest of the letters
@@ -71,6 +85,7 @@ def validAnswer(row, answer, dictionary):
 
 # Generate row lookup table
 # For every possible row, generate a list of every possble answer that could result in that row
+# dictionary: list of all possible Wordle words
 def generateRowLookup(dictionary):
 	rowLookup = defaultdict(list)
 
@@ -83,7 +98,12 @@ def generateRowLookup(dictionary):
 			if validAnswer(row, answer, dictionary):
 				rowLookup[strRow].append(answer)
 		print(strRow)
-	f.write("rowLookup = defaultdict(list)")
+	f.write("rowLookup = defaultdict(list)\n")
 	f.write("rowLookup.update(" + json.dumps(rowLookup) + ')\n')
 	f.close()
 	return rowLookup
+
+if __name__ == '__main__':
+	generateRowLookup(wordlist)
+	executionTime = (time.perf_counter() - startTime)
+	print(f"Execution time h:m:s: {datetime.timedelta(seconds=executionTime)}")
