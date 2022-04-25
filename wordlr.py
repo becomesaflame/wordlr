@@ -27,30 +27,6 @@ B = 0
 wordleEpoch = datetime.date(2021, 6, 19)
 wordleNumberToday = (datetime.date.today() - wordleEpoch).days
 
-# Takes a parsed Tweet (list of rows)
-# Check duplicate rows:
-# for each potential answer, remove the potential answer from the rowLookup as you go through the rows
-# Strike is tallied for the answer if there are not enough potential guesses to generate all of the
-#   rows, assuming unique guesses for each row
-def tallyTweetStrikes(tweet, tallyDictionary, rowLookup):
-	for answer in tallyDictionary.keys(): # Iterate over all potential answers
-		scratchRowLookup = copy.deepcopy(rowLookup) # start with a fresh copy of the rowLookup for each answer
-		# TODO deepcopy takes way too long, need a new solution
-		for row in tweet:
-			if row == [G,G,G,G,G]:
-				continue
-			rowStr = ''.join(str(i) for i in row) # Convert row to str
-			if not answer in scratchRowLookup[rowStr]:
-				tallyDictionary[answer] += 1
-				if answer == ANSWER_CHECK:
-					print("False strike on tweet:")
-					print(tweet)
-					breakpoint()
-			else:
-				# delete guess from scratchRowLookup entry for this row
-				# This ensures that duplicate rows must be reachable from multiple guesses for each answer
-				scratchRowLookup[rowStr].remove(answer)
-
 def sortDict(inDict, topWords):
 	for word in list(inDict.keys()):
 		if len(topWords) != 2:
@@ -86,7 +62,6 @@ def tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCou
 		for row in tweet:
 			lineCount += 1
 			tallyRowStrikesFast(row, tallyDictionary, rowLookup)
-		# tallyTweetStrikes(tweet, tallyDictionary, rowLookup) # try new method with checks for duplicates
 		topWords = sortDict(tallyDictionary, topWords)
 		print(topWords[0], ":", tallyDictionary[topWords[0]], " second place:", topWords[1],":",tallyDictionary[topWords[1]], " Remaining:", len(tallyDictionary), "Processed ", lineCount, " lines")
 		if tallyDictionary[topWords[0]] < tallyDictionary[topWords[1]] - WIN_GAP:
