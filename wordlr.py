@@ -1,7 +1,5 @@
 from collections import defaultdict
-import copy
 import datetime
-import json
 import os
 import re
 import time
@@ -11,8 +9,9 @@ import tweepy
 # exec(open("wordlr.py").read())
 
 WIN_GAP = 20 # How much of a lead one answer needs to achieve before declaring victory
+LOSS_THRESHOLD = 10 # If leading answer gets this many strikes, declare failure
 
-ANSWER_CHECK = '' # Debug: Put correct answer here to flag erroneous strikes
+ANSWER_CHECK = 'shown' # Debug: Put correct answer here to flag erroneous strikes
 
 # Load the list of all viable Wordle words
 with open('wordList.txt') as f:
@@ -36,20 +35,21 @@ def sortDict(inDict, topWords):
 			topWords[0] = word
 		elif inDict[word] < inDict[topWords[1]] and word != topWords[0]:
 			topWords[1] = word
-		elif inDict[word] > inDict[topWords[0]]+WIN_GAP+1:
+		elif inDict[word] > inDict[topWords[0]]+WIN_GAP+1 and len(inDict) > 20:
 			del inDict[word]
 	return topWords
 
 def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
 	if row == [G,G,G,G,G]:
-		return # TODO check syntax for exiting with no return value
+		return
 	for answer in tallyDictionary.keys():
 		if not answer in rowLookup[''.join(str(i) for i in row)]: # Convert row to str
 			tallyDictionary[answer] += 1
 			if answer == ANSWER_CHECK:
 				print("False strike on row:")
 				print(row)
-				breakpoint()
+				# breakpoint()
+				return True
 
 # Tally Strikes
 # For a list of parsed tweets, check each row against every
@@ -58,16 +58,21 @@ def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
 def tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCount):
 	topWords = []
 	win = False
+	lose = False
 	for tweet in renderedTweets: # note that invalid tweets are still here as empty lists
 		for row in tweet:
 			lineCount += 1
-			tallyRowStrikesFast(row, tallyDictionary, rowLookup)
+			if tallyRowStrikesFast(row, tallyDictionary, rowLookup):
+				lose = True # Hit a strike on the correct answer
 		topWords = sortDict(tallyDictionary, topWords)
 		print(topWords[0], ":", tallyDictionary[topWords[0]], " second place:", topWords[1],":",tallyDictionary[topWords[1]], " Remaining:", len(tallyDictionary), "Processed ", lineCount, " lines")
 		if tallyDictionary[topWords[0]] < tallyDictionary[topWords[1]] - WIN_GAP:
 			win = True
 			break
-	return topWords, win, lineCount
+		if tallyDictionary[topWords[0]] > LOSS_THRESHOLD:
+			lose = True
+			break
+	return topWords, win, lose, lineCount
 
 # ref:
 # https://dev.to/twitterdev/a-comprehensive-guide-for-using-the-twitter-api-v2-using-tweepy-in-python-15d9
@@ -84,11 +89,11 @@ def scrapeTwitter(client):
 	try:
 		tweets = []
 		for tweet in tweepy.Paginator(client.search_recent_tweets, query=text_query, max_results=100).flatten(limit=1000):
-			tweets.append(tweet.data['text'])
+			tweets.append(tweet)
 		return tweets 
 	except BaseException as e:
 		print('failed on_status,',str(e))
-		print('Did you load the API key into your environment?')
+		print('Did you load the API key into your environment?') # TODO only do this on correct exception
 		time.sleep(3)
 
 # Takes a list of Wordle tweet text fields
@@ -100,7 +105,7 @@ def parseTweets(tweets, wordleNumberToday):
 	for i, tweet in enumerate(tweets):
 		rows = [] # rendered rows in this tweet
 		try:
-			tweetLines = tweet.split('\n')
+			tweetLines = tweet.data['text'].split('\n')
 			# Skip any introductory added text and find start of wordle grid
 			for line in tweetLines:
 				match = re.match("Wordle ([0-9]{3}) ([X1-6])/6", line)
@@ -134,13 +139,45 @@ def parseTweets(tweets, wordleNumberToday):
 						raise Exception('Unexpected post format - row contains unexpected character')
 				rows.append(row)
 		except BaseException as err:
-			print(f"Unexpected {err=}, {type(err)=}, parsing tweet {i}:")
-			print(tweet)
-			print("stripped down to lines: ")
-			print(tweetLines)
+			# print(f"Unexpected {err=}, {type(err)=}, parsing tweet {i}:")
+			# print(tweet)
+			# print("stripped down to lines: ")
+			# print(tweetLines)
+			pass
 		renderedTweets.append(rows)
 	return renderedTweets
 
+
+#######################################################################################################
+# Debug Functions
+
+# Human Readable tweet
+# Convert square characters to R/G/B
+# Takes the text part of a tweet (string)
+def humanReadableTweet(tweet):
+	tweet = tweet.replace('\N{Black Large Square}', 'B')
+	tweet = tweet.replace('\N{White Large Square}', 'B')
+	tweet = tweet.replace('\N{Large Yellow Square}', 'Y')
+	tweet = tweet.replace('\N{Large Blue Square}', 'Y')
+	tweet = tweet.replace('\N{Large Green Square}', 'G')
+	tweet = tweet.replace('\N{Large Orange Square}', 'G')
+	return tweet
+
+
+# With a known correct answer, identify invalid tweets 
+def checkAnswer(answer, tweets, rowLookup, wordleNumberToday):
+	renderedTweets = parseTweets(tweets, wordleNumberToday)
+	for i, renderedTweet in enumerate(renderedTweets):
+		for j, row in enumerate(renderedTweet):
+			if not answer in rowLookup[''.join(str(i) for i in row)]:
+			# if validAnswer(row, answer, dictionary) == False:
+				print(f"Row {j} in Tweet {i} is invalid. Tweet: ")
+				print(humanReadableTweet(tweets[i].data['text']).split('\n'))
+				print(f"Tweet ID: {tweets[i].data['id']}")
+				print("Rendered tweet: ")
+				print(renderedTweet)
+
+#######################################################################################################
 
 # Loads the rowLookup dict
 # import rowLookupTable.py
@@ -154,9 +191,8 @@ if __name__ == '__main__':
 
 	tallyDictionary = dict.fromkeys(dictionary, 0)
 	lineCount = 0
-	win = False
 
-	while win == False:
+	while True:
 		# breakpoint()
 
 		# Scrape 100 tweets
@@ -165,10 +201,19 @@ if __name__ == '__main__':
 		renderedTweets = parseTweets(tweets, wordleNumberToday)
 
 		# Run with vote method
-		topWords, win, lineCount = tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCount)
+		topWords, win, lose, lineCount = tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCount)
+
+		if win or lose:
+			break
 
 	print(f"{topWords[0]} wins with {tallyDictionary[topWords[0]]}")
 	print(f"{topWords[1]} in second with {tallyDictionary[topWords[1]]}")
 	print(f"Parsed {lineCount} lines")
+
+	if win:
+		print("SUCCESS")
+	if lose:
+		print("FAILURE - too many invalid tweets")
+		breakpoint()
 
 
