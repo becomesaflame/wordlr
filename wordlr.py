@@ -35,20 +35,19 @@ def sortDict(inDict, topWords):
 			topWords[0] = word
 		elif inDict[word] < inDict[topWords[1]] and word != topWords[0]:
 			topWords[1] = word
-		elif inDict[word] > inDict[topWords[0]]+WIN_GAP+1 and len(inDict) > 20:
-			del inDict[word]
+		# elif inDict[word] > inDict[topWords[0]]+WIN_GAP+1 and len(inDict) > 20:
+		# 	del inDict[word]
 	return topWords
 
 def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
 	if row == [G,G,G,G,G]:
 		return
-	for answer in tallyDictionary.keys():
-		if not answer in rowLookup[''.join(str(i) for i in row)]: # Convert row to str
-			tallyDictionary[answer] += 1
-			if answer == ANSWER_CHECK:
-				print("False strike on row:")
-				print(row)
-				# breakpoint()
+	for answer in rowLookup[''.join(str(i) for i in row)]: # Convert row to str
+		tallyDictionary[answer] += 1
+		if answer == ANSWER_CHECK:
+			print("False strike on row:")
+			print(row)
+			# breakpoint()
 
 # Tally Strikes
 # For a list of parsed tweets, check each row against every
@@ -181,7 +180,10 @@ def checkAnswer(answer, tweets, rowLookup, wordleNumberToday):
 #######################################################################################################
 
 # Loads the rowLookup dict
-from rowLookupTable import rowLookup
+# from rowLookupTable import rowLookup
+f = open("rowLookupTableJSON.py", "r")
+rowLookup = json.load(f)
+f.close()
 
 dictionary = wordlist.copy()
 
@@ -195,12 +197,11 @@ if __name__ == '__main__':
 	while True:
 		# breakpoint()
 
-		# Scrape 100 tweets
+		# Scrape 1000 tweets
 		tweets = scrapeTwitter(client)
 		# Parse the tweets into rows
 		renderedTweets = parseTweets(tweets, wordleNumberToday)
 
-		breakpoint()
 		# Run with vote method
 		topWords, win, lose, lineCount = tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCount)
 

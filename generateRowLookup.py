@@ -89,18 +89,16 @@ def validAnswer(row, answer, dictionary):
 def generateRowLookup(dictionary):
 	rowLookup = defaultdict(list)
 
-	f = open("rowLookupTable.py", 'w')
 	allRows = genAllRows()
 	for row in allRows:
 		strRow = ''.join(str(i) for i in row) # Convert list of ints to str
 		rowLookup[strRow] = []
 		for answer in dictionary:
-			if validAnswer(row, answer, dictionary):
+			if not validAnswer(row, answer, dictionary):
 				rowLookup[strRow].append(answer)
 		print(strRow)
-	f.write("from collections import defaultdict\n\n")
-	f.write("rowLookup = defaultdict(list)\n")
-	f.write("rowLookup.update(" + json.dumps(rowLookup) + ')\n')
+	f = open("rowLookupTableJSON.py", 'w')
+	json.dump(rowLookupNew, f)
 	f.close()
 	return rowLookup
 
