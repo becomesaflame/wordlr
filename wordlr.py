@@ -11,7 +11,7 @@ import tweepy
 WIN_GAP = 20 # How much of a lead one answer needs to achieve before declaring victory
 LOSS_THRESHOLD = 10 # If leading answer gets this many strikes, declare failure
 
-ANSWER_CHECK = 'shown' # Debug: Put correct answer here to flag erroneous strikes
+ANSWER_CHECK = 'zesty' # Debug: Put correct answer here to flag erroneous strikes
 
 # Load the list of all viable Wordle words
 with open('wordList.txt') as f:
@@ -49,7 +49,6 @@ def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
 				print("False strike on row:")
 				print(row)
 				# breakpoint()
-				return True
 
 # Tally Strikes
 # For a list of parsed tweets, check each row against every
@@ -62,8 +61,7 @@ def tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCou
 	for tweet in renderedTweets: # note that invalid tweets are still here as empty lists
 		for row in tweet:
 			lineCount += 1
-			if tallyRowStrikesFast(row, tallyDictionary, rowLookup):
-				lose = True # Hit a strike on the correct answer
+			tallyRowStrikesFast(row, tallyDictionary, rowLookup)
 		topWords = sortDict(tallyDictionary, topWords)
 		print(topWords[0], ":", tallyDictionary[topWords[0]], " second place:", topWords[1],":",tallyDictionary[topWords[1]], " Remaining:", len(tallyDictionary), "Processed ", lineCount, " lines")
 		if tallyDictionary[topWords[0]] < tallyDictionary[topWords[1]] - WIN_GAP:
@@ -90,6 +88,7 @@ def scrapeTwitter(client):
 		tweets = []
 		for tweet in tweepy.Paginator(client.search_recent_tweets, query=text_query, max_results=100).flatten(limit=1000):
 			tweets.append(tweet)
+			# breakpoint()
 		return tweets 
 	except BaseException as e:
 		print('failed on_status,',str(e))
