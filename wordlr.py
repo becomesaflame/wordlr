@@ -176,11 +176,12 @@ def checkAnswer(answer, tweets, rowLookup, wordleNumberToday):
 				print("Rendered tweet: ")
 				print(renderedTweet)
 
+
+
 #######################################################################################################
 
 # Loads the rowLookup dict
-# import rowLookupTable.py
-exec(open("rowLookupTable.py").read())
+from rowLookupTable import rowLookup
 
 dictionary = wordlist.copy()
 
@@ -199,6 +200,7 @@ if __name__ == '__main__':
 		# Parse the tweets into rows
 		renderedTweets = parseTweets(tweets, wordleNumberToday)
 
+		breakpoint()
 		# Run with vote method
 		topWords, win, lose, lineCount = tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCount)
 

@@ -98,6 +98,7 @@ def generateRowLookup(dictionary):
 			if validAnswer(row, answer, dictionary):
 				rowLookup[strRow].append(answer)
 		print(strRow)
+	f.write("from collections import defaultdict\n\n")
 	f.write("rowLookup = defaultdict(list)\n")
 	f.write("rowLookup.update(" + json.dumps(rowLookup) + ')\n')
 	f.close()
