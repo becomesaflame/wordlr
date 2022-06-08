@@ -1,5 +1,7 @@
 from collections import defaultdict
 import datetime
+from joblib import Memory
+import json
 import os
 import re
 import time
@@ -11,7 +13,8 @@ import tweepy
 WIN_GAP = 20 # How much of a lead one answer needs to achieve before declaring victory
 LOSS_THRESHOLD = 10 # If leading answer gets this many strikes, declare failure
 
-ANSWER_CHECK = 'zesty' # Debug: Put correct answer here to flag erroneous strikes
+ANSWER_CHECK = '' # Debug: Put correct answer here to flag erroneous strikes
+IGNORE_INVALID_TWEETS = False
 
 # Load the list of all viable Wordle words
 with open('wordList.txt') as f:
@@ -25,6 +28,10 @@ B = 0
 # Figure out today's Wordle number
 wordleEpoch = datetime.date(2021, 6, 19)
 wordleNumberToday = (datetime.date.today() - wordleEpoch).days
+
+# Set up caching for tweets
+cachedir = "tweetCache"
+memory = Memory(cachedir, verbose=0)
 
 def sortDict(inDict, topWords):
 	for word in list(inDict.keys()):
@@ -49,6 +56,12 @@ def tallyRowStrikesFast(row, tallyDictionary, rowLookup):
 			print(row)
 			# breakpoint()
 
+def isValidTweet(renderedTweet, answer, rowLookup):
+	for row in renderedTweet:
+		if answer in rowLookup[''.join(str(i) for i in row)]:
+			return False
+	return True
+
 # Tally Strikes
 # For a list of parsed tweets, check each row against every
 # word in the dictionary. Tally a strike against each word
@@ -58,6 +71,9 @@ def tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCou
 	win = False
 	lose = False
 	for tweet in renderedTweets: # note that invalid tweets are still here as empty lists
+		if IGNORE_INVALID_TWEETS:
+			if not isValidTweet(tweet, ANSWER_CHECK, rowLookup):
+				continue
 		for row in tweet:
 			lineCount += 1
 			tallyRowStrikesFast(row, tallyDictionary, rowLookup)
@@ -78,21 +94,30 @@ def tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCou
 # https://docs.tweepy.org/en/stable/client.html
 def initTweepyClient():
 	bearer_token = os.environ.get("TWITTER_BEARER_TOKEN")
-	client = tweepy.Client(bearer_token=bearer_token)
+	client = tweepy.Client(bearer_token=bearer_token) #, wait_on_rate_limit=True)
+	tweepy.debug(True)
 	return client
 
-def scrapeTwitter(client):
-	text_query = 'Wordle 6'
+# @memory.cache
+def scrapeTwitter(client, wordleNumberToday):
+	text_query = f'"Wordle {wordleNumberToday}" 6'
 	try:
 		tweets = []
-		for tweet in tweepy.Paginator(client.search_recent_tweets, query=text_query, max_results=100).flatten(limit=1000):
-			tweets.append(tweet)
-			# breakpoint()
+		tweets = client.search_recent_tweets(query=text_query, max_results=1)
+
+		# for tweet in tweepy.Paginator(client.search_recent_tweets, query=text_query, max_results=100).flatten(limit=1000):
+		# 	tweets.append(tweet)
+		# 	# breakpoint()
 		return tweets 
-	except BaseException as e:
-		print('failed on_status,',str(e))
+		# tweets = list(tweepy.Paginator(client.search_recent_tweets, query=text_query, max_results=100).flatten(limit=1000))
+	except tweepy.errors.Unauthorized as e:
+		print('failed retreiving tweets,',str(e))
 		print('Did you load the API key into your environment?') # TODO only do this on correct exception
-		time.sleep(3)
+		raise SystemExit()
+	except BaseException as e:
+		print('failed retreiving tweets,',str(e))
+		print(f"Unexpected {e=}, {type(e)=}")
+		raise SystemExit()
 
 # Takes a list of Wordle tweet text fields
 # Sanitizes, parses, and renders them into rows
@@ -164,17 +189,27 @@ def humanReadableTweet(tweet):
 
 # With a known correct answer, identify invalid tweets 
 def checkAnswer(answer, tweets, rowLookup, wordleNumberToday):
+	invalidTweets = []
 	renderedTweets = parseTweets(tweets, wordleNumberToday)
 	for i, renderedTweet in enumerate(renderedTweets):
 		for j, row in enumerate(renderedTweet):
-			if not answer in rowLookup[''.join(str(i) for i in row)]:
+			if answer in rowLookup[''.join(str(i) for i in row)]:
 			# if validAnswer(row, answer, dictionary) == False:
 				print(f"Row {j} in Tweet {i} is invalid. Tweet: ")
 				print(humanReadableTweet(tweets[i].data['text']).split('\n'))
 				print(f"Tweet ID: {tweets[i].data['id']}")
 				print("Rendered tweet: ")
 				print(renderedTweet)
+				invalidTweets.append(tweets[i])
+	return invalidTweets
 
+
+def sortDictIntoList(inDict):
+	sortedList = []
+	for word, tally in inDict.items():
+		sortedList.append((tally, word))
+	sortedList.sort() 
+	return sortedList
 
 
 #######################################################################################################
@@ -194,21 +229,20 @@ if __name__ == '__main__':
 	tallyDictionary = dict.fromkeys(dictionary, 0)
 	lineCount = 0
 
-	while True:
-		# breakpoint()
+	# while True:
 
-		# Scrape 1000 tweets
-		tweets = scrapeTwitter(client)
-		# Parse the tweets into rows
-		renderedTweets = parseTweets(tweets, wordleNumberToday)
+	# Scrape 10000 tweets
+	tweets = scrapeTwitter(client, wordleNumberToday)
+	# Parse the tweets into rows
+	renderedTweets = parseTweets(tweets, wordleNumberToday)
 
-		# Run with vote method
-		topWords, win, lose, lineCount = tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCount)
+	# Run with vote method
+	topWords, win, lose, lineCount = tallyStrikes(tallyDictionary, renderedTweets, dictionary, rowLookup, lineCount)
 
-		if win or lose:
-			break
+	# if win or lose:
+	# 	break
 
-	print(f"{topWords[0]} wins with {tallyDictionary[topWords[0]]}")
+	print(f"{topWords[0]} in first with {tallyDictionary[topWords[0]]}")
 	print(f"{topWords[1]} in second with {tallyDictionary[topWords[1]]}")
 	print(f"Parsed {lineCount} lines")
 
@@ -218,4 +252,7 @@ if __name__ == '__main__':
 		print("FAILURE - too many invalid tweets")
 		breakpoint()
 
+	answer = ANSWER_CHECK
+	sortedList = sortDictIntoList(tallyDictionary)
+	breakpoint()
 
